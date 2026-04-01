@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Suggest Confirm</title>
+
+<script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<style>
+  body {
+    font-family: Arial;
+    background: #111;
+    color: #fff;
+    padding: 20px;
+  }
+
+  video {
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  button {
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: none;
+    width: 100%;
+  }
+
+  .suggestions button {
+    background: #333;
+    margin: 5px;
+    width: auto;
+  }
+
+  .card {
+    background: #222;
+    padding: 15px;
+    border-radius: 12px;
+    margin-top: 10px;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    margin-top: 8px;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>📷 Scan → Suggest → Confirm</h2>
+
+<video id="video" autoplay></video>
+<button onclick="capture()">📸 Scan Item</button>
+
+<div class="card">
+  <h3>Suggestions</h3>
+  <div id="suggestions" class="suggestions"></div>
+
+  <h3>Selected Item</h3>
+  <input type="text" id="name" placeholder="Tap suggestion or edit manually">
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const video = document.getElementById("video");
+const suggestionsDiv = document.getElementById("suggestions");
+
+// 🎥 START CAMERA
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+.then(stream => video.srcObject = stream);
+
+// 🧠 COMMON GROCERY KEYWORDS (expand this)
+const keywords = [
+  "milk", "bear brand", "coffee", "rice", "sardines",
+  "noodles", "bread", "egg", "sugar", "salt",
+  "coke", "pepsi", "juice"
+];
+
+// 📸 CAPTURE + OCR
+function capture() {
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  Tesseract.recognize(canvas, 'eng')
+    .then(({ data: { text } }) => {
+      console.log("RAW:", text);
+      generateSuggestions(text);
+    });
+}
+
+// 🔎 GENERATE SUGGESTIONS
+function generateSuggestions(text) {
+  suggestionsDiv.innerHTML = "";
+
+  const lower = text.toLowerCase();
+
+  let found = keywords.filter(k => lower.includes(k));
+
+  // fallback: split text lines
+  if (found.length === 0) {
+    found = text
+      .split("\n")
+      .map(t => t.trim())
+      .filter(t => t.length > 3)
+      .slice(0, 5);
+  }
+
+  // show buttons
+  found.forEach(item => {
+    const btn = document.createElement("button");
+    btn.innerText = item;
+    btn.onclick = () => selectItem(item);
+    suggestionsDiv.appendChild(btn);
+  });
+}
+
+// ✅ SELECT ITEM
+function selectItem(item) {
+  document.getElementById("name").value = capitalize(item);
+}
+
+// ✨ FORMAT TEXT
+function capitalize(text) {
+  return text.replace(/\b\w/g, c => c.toUpperCase());
+}
+</script>
+
+</body>
+</html>
